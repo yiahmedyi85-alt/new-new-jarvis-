@@ -12,3 +12,4 @@ database_id = "REPLACE_WITH_D1_DATABASE_ID"
 
 [vars]
 GEMINI_MODEL = "gemini-3.5-flash-lite"
+\n[assets]\ndirectory = "./public"\nbinding = "ASSETS"\nrun_worker_first = true\n
