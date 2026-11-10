@@ -294,9 +294,36 @@
       recognition.onend = () => { recognition = null; micBtn.classList.remove('recording'); micBtn.textContent='🎤'; };
       recognition.start(); micBtn.classList.add('recording'); micBtn.textContent='⏹';
     }
-    document.getElementById('file-inp').addEventListener('change', function () {
-      if (this.files.length) sys('Cloud file transfer is not enabled yet. Text commands are available.');
+    document.getElementById('file-inp').addEventListener('change', async function () {
+      const files = Array.from(this.files || []);
       this.value = '';
+      for (const file of files) {
+        if (file.size > 10 * 1024 * 1024) { sys(file.name + ': maximum file size is 10 MB.'); continue; }
+        const form = new FormData();
+        form.append('file', file, file.name);
+        try {
+          const response = await _authFetch('/api/files', { method: 'POST', body: form });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Upload failed');
+          append('user', 'Uploaded file: ' + data.name + ' (' + Math.ceil(data.size / 1024) + ' KB)');
+          const link = document.createElement('a');
+          link.href = '#';
+          link.className = 'fc-dl';
+          link.textContent = 'Download ' + data.name;
+          link.addEventListener('click', async e => {
+            e.preventDefault();
+            try {
+              const r = await _authFetch('/api/files?key=' + encodeURIComponent(data.key));
+              if (!r.ok) throw new Error('Download failed');
+              const blobUrl = URL.createObjectURL(await r.blob());
+              const a = document.createElement('a');
+              a.href = blobUrl; a.download = data.name; a.click();
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+            } catch (err) { sys(err.message); }
+          });
+          feed.lastElementChild.appendChild(link);
+        } catch (e) { sys(file.name + ': ' + e.message); }
+      }
     });
     async function _unusedCloudVoicePlaceholder() {}
     setStatus(false);
