@@ -86,17 +86,21 @@ async function notifyPhone(env: Env, status: "completed" | "failed", mode: "clou
   const twiml = "<Response><Say voice=\"alice\">" + message + "</Say></Response>";
   const credentials = btoa(sid + ":" + token);
   const body = new URLSearchParams({ To: to, From: from, Twiml: twiml });
-  const response = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + sid + "/Calls.json", {
-    method: "POST",
-    headers: {
-      "authorization": "Basic " + credentials,
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 1000);
-    console.error("JARVIS phone notification failed:", response.status, detail);
+  try {
+    const response = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + sid + "/Calls.json", {
+      method: "POST",
+      headers: {
+        "authorization": "Basic " + credentials,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 1000);
+      console.error("JARVIS phone notification failed:", response.status, detail);
+    }
+  } catch (error) {
+    console.error("JARVIS phone notification request failed:", error);
   }
 }
 
