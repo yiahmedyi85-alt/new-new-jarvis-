@@ -1,25 +1,21 @@
 # JARVIS Cloudflare backend
 
-This is the first Cloudflare-native backend step. It uses a Worker and D1 instead of the Python/SQLite service in `cloud_service/`. The original desktop application and its UI are not changed.
+Cloudflare Worker + D1 backend for the online JARVIS service. The original desktop UI and dashboard source are kept in their existing folders.
 
-## What this version does
+## Current backend capabilities
 
-- Accepts authenticated cloud and PC tasks.
-- Stores task state in Cloudflare D1.
-- Runs one queued cloud task per scheduled invocation through the Gemini REST API.
-- Holds PC tasks until the desktop bridge claims them.
-- Provides authenticated task status and bridge endpoints.
+- Cloud task queue processed by Gemini on the scheduled Worker.
+- PC task queue for a desktop bridge.
+- One-time 8-character phone pairing PINs, valid for 10 minutes.
+- Phone sessions stored as SHA-256 token hashes in D1. Raw session tokens are returned once and are not stored.
+- Authenticated task submission and status retrieval.
+- Separate bridge authentication. The bridge secret must stay on the desktop and must never appear in browser code.
 
-## What is not connected yet
-
-- The existing phone dashboard still uses the local FastAPI/WebSocket routes. It is not yet compatible with this Worker API.
-- The desktop app does not yet poll the cloud bridge or send task results back.
-- Phone calls and push notifications are not configured.
-- No live deployment has been performed.
+The existing phone HTML has not yet been adapted to these endpoints, and the desktop bridge client is not yet integrated. Do not treat this backend as a finished deployment.
 
 ## Create the D1 database
 
-From this directory, install dependencies and authenticate with Wrangler:
+From this directory:
 
 ```bash
 npm install
@@ -29,7 +25,7 @@ npx wrangler d1 create jarvis-cloud-db
 
 Copy the returned database ID into `wrangler.toml`, replacing `REPLACE_WITH_D1_DATABASE_ID`.
 
-Apply the schema:
+Apply the current schema:
 
 ```bash
 npx wrangler d1 execute jarvis-cloud-db --remote --file=./schema.sql
@@ -37,38 +33,39 @@ npx wrangler d1 execute jarvis-cloud-db --remote --file=./schema.sql
 
 ## Configure secrets
 
-Generate two different long random tokens. Then set secrets:
+Generate a long random bridge token and set it as a Cloudflare secret:
 
 ```bash
-npx wrangler secret put JARVIS_CLOUD_TOKEN
 npx wrangler secret put JARVIS_BRIDGE_TOKEN
 npx wrangler secret put GEMINI_API_KEY
 ```
 
-Keep these values private. Never commit them to GitHub or put them in frontend JavaScript.
+Do not commit secrets or paste them into GitHub. The phone browser receives a short-lived session token after pairing, never the bridge token or Gemini key.
 
-## Deploy
+## Deploy and check
 
 ```bash
 npx wrangler deploy
 ```
 
-The API URL will be printed by Wrangler. Test `GET /health` first.
+Test `GET /health` on the deployed Worker URL.
 
-## API
+## API outline
 
-All API calls require `Authorization: Bearer <JARVIS_CLOUD_TOKEN>` unless stated otherwise.
+Desktop bridge, authenticated with `JARVIS_BRIDGE_TOKEN`:
 
-- `GET /health`
-- `POST /api/tasks` with JSON `{"prompt":"Summarize this topic","mode":"cloud"}` or `{"prompt":"Open my editor","mode":"pc"}`
-- `GET /api/tasks`
-- `GET /api/tasks/<task_id>`
+- `POST /bridge/pairing` creates a one-time phone PIN.
+- `GET /bridge/next` claims the next queued PC task.
+- `POST /bridge/complete` returns a task result.
 
-The desktop bridge uses the separate `JARVIS_BRIDGE_TOKEN`:
+Phone:
 
-- `GET /bridge/next`
-- `POST /bridge/complete` with `{"task_id":"...","status":"completed","result":"..." }`
+- `POST /login` exchanges an 8-character PIN for a 12-hour session.
+- Authenticated `POST /api/command` queues a PC task.
+- Authenticated `POST /api/tasks` queues a cloud or PC task.
+- Authenticated `GET /api/tasks` lists recent tasks.
+- Authenticated `GET /api/tasks/<task_id>` reads one task.
 
-## Free-plan expectations
+## Limits
 
-Cloudflare free quotas apply. This is not unlimited hosting, and Gemini API usage may have separate limits or charges. The scheduled worker checks for cloud tasks on a one-minute schedule, so cloud execution is not instantaneous.
+The scheduled Worker checks cloud tasks once per minute and processes at most one task per invocation. Cloudflare quotas apply. Gemini API usage may have separate limits or charges. Telephony providers generally charge for phone numbers and calls, so a free unlimited virtual number cannot be promised.
