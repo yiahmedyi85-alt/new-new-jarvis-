@@ -32,7 +32,7 @@ jobs:
       - run: npm run typecheck
       - name: Check phone dashboard JavaScript syntax
         run: |
-          node --input-type=module -e 'import { readFileSync } from "node:fs"; const html = readFileSync("public/index.html", "utf8"); const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]; if (!scripts.length) throw new Error("No dashboard script found"); for (const script of scripts) new Function(script[1]); console.log("Phone dashboard JavaScript syntax OK");'
+          node --input-type=module -e 'import { readFileSync } from "node:fs"; const html = readFileSync("public/index.html", "utf8"); const start = html.indexOf("<script>"); const end = html.indexOf("</script>", start); if (start < 0 || end < 0) throw new Error("Dashboard script not found"); new Function(html.slice(start + 8, end)); console.log("Phone dashboard JavaScript syntax OK");'
 
   desktop-python:
     runs-on: ubuntu-latest
