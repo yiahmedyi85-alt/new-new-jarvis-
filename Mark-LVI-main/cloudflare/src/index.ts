@@ -105,6 +105,10 @@ async function notifyPhone(env: Env, status: "completed" | "failed", mode: "clou
 }
 
 async function runCloudTasks(env: Env): Promise<void> {
+  const now = Date.now();
+  await env.DB.prepare(
+    "UPDATE tasks SET status = 'queued', updated_at = ? WHERE mode = 'cloud' AND status = 'running' AND updated_at < ?"
+  ).bind(now, now - 10 * 60 * 1000).run();
   const row = await env.DB.prepare(
     "SELECT id, prompt FROM tasks WHERE mode = 'cloud' AND status = 'queued' ORDER BY created_at LIMIT 1"
   ).first<{ id: string; prompt: string }>();
@@ -153,6 +157,10 @@ export default {
       }
 
       if (request.method === "GET" && path === "/bridge/next") {
+        const now = Date.now();
+        await env.DB.prepare(
+          "UPDATE tasks SET status = 'queued', updated_at = ? WHERE mode = 'pc' AND status = 'running' AND updated_at < ?"
+        ).bind(now, now - 30 * 60 * 1000).run();
         const row = await env.DB.prepare(
           "SELECT id, prompt, mode, status, created_at FROM tasks WHERE mode = 'pc' AND status = 'queued' ORDER BY created_at LIMIT 1"
         ).first<any>();
@@ -187,6 +195,7 @@ export default {
       if (!/^[A-HJ-NP-Z2-9]{8}$/.test(pin)) return json({ ok: false, error: "Invalid or expired key" }, 401);
       const pinHash = await sha256(pin);
       const now = Date.now();
+      await env.DB.prepare("DELETE FROM sessions WHERE expires_at <= ?").bind(now).run();
       const pairing = await env.DB.prepare(
         "SELECT pin_hash FROM pairing_codes WHERE pin_hash = ? AND expires_at > ?"
       ).bind(pinHash, now).first<{ pin_hash: string }>();
