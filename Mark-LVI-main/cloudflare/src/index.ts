@@ -158,6 +158,30 @@ export default {
     if (path.startsWith("/bridge/")) {
       if (!bridgeAuthorized(request, env.JARVIS_BRIDGE_TOKEN)) return json({ error: "Unauthorized" }, 401);
 
+      if (request.method === "GET" && path === "/bridge/files") {
+        const listed = await env.FILES.list({ prefix: "uploads/", limit: 100 });
+        return json({ files: listed.objects.map(o => ({
+          key: o.key,
+          name: o.customMetadata?.originalName || o.key.split("/").pop(),
+          size: o.size,
+          uploaded: o.uploaded.toISOString(),
+        })) });
+      }
+
+      if (request.method === "GET" && path === "/bridge/file") {
+        const key = url.searchParams.get("key") || "";
+        if (!/^uploads\/[a-f0-9-]{36}\/[a-zA-Z0-9._ -]{1,120}$/.test(key)) return json({ error: "Invalid file key." }, 400);
+        const object = await env.FILES.get(key);
+        if (!object) return json({ error: "File not found." }, 404);
+        return new Response(object.body, {
+          headers: {
+            "content-type": object.httpMetadata?.contentType || "application/octet-stream",
+            "x-jarvis-filename": encodeURIComponent(object.customMetadata?.originalName || "download"),
+            "cache-control": "private, no-store",
+          },
+        });
+      }
+
       if (request.method === "POST" && path === "/bridge/pairing") {
         const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         const bytes = crypto.getRandomValues(new Uint8Array(8));
