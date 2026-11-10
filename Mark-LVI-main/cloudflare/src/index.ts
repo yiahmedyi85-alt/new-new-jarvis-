@@ -159,13 +159,17 @@ export default {
       if (!bridgeAuthorized(request, env.JARVIS_BRIDGE_TOKEN)) return json({ error: "Unauthorized" }, 401);
 
       if (request.method === "GET" && path === "/bridge/files") {
-        const listed = await env.FILES.list({ prefix: "uploads/", limit: 100 });
-        return json({ files: listed.objects.map(o => ({
-          key: o.key,
-          name: o.customMetadata?.originalName || o.key.split("/").pop(),
-          size: o.size,
-          uploaded: o.uploaded.toISOString(),
-        })) });
+        const cursor = url.searchParams.get("cursor") || undefined;
+        const listed = await env.FILES.list({ prefix: "uploads/", limit: 100, cursor });
+        return json({
+          files: listed.objects.map(o => ({
+            key: o.key,
+            name: o.customMetadata?.originalName || o.key.split("/").pop(),
+            size: o.size,
+            uploaded: o.uploaded.toISOString(),
+          })),
+          cursor: listed.truncated ? listed.cursor : null,
+        });
       }
 
       if (request.method === "GET" && path === "/bridge/file") {
