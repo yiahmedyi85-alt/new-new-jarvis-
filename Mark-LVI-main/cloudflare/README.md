@@ -74,6 +74,13 @@ npx wrangler deploy
 
 Test `GET /health` on the deployed Worker URL.
 
+## Use the phone dashboard
+
+- Send a normal message to queue a PC task. The computer must be powered on and JARVIS must be running.
+- Start a message with `!cloud ` to run a Gemini cloud task. This works while the computer is off.
+- The dashboard checks task status every four seconds and displays the result when ready.
+- Browser microphone input uses speech-to-text where supported. It is not the original live PCM audio relay.
+
 ## API outline
 
 Desktop bridge, authenticated with `JARVIS_BRIDGE_TOKEN`:
