@@ -31,7 +31,7 @@ function constantTimeEqual(a: string, b: string): boolean {
 
 async function gemini(prompt: string, env: Env): Promise<string> {
   if (!env.GEMINI_API_KEY) throw new Error("Gemini API key is not configured in Cloudflare.");
-  const model = env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = env.GEMINI_MODEL || "gemini-3.5-flash-lite";
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const response = await fetch(endpoint, {
     method: "POST",
