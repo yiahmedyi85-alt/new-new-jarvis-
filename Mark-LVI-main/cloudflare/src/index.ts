@@ -267,7 +267,7 @@ export default {
       const assetUrl = new URL(request.url);
       if (path === "/login") assetUrl.pathname = "/login.html";
       else if (path === "/") assetUrl.pathname = "/index.html";
-      return env.ASSETS.fetch(new Request(assetUrl, request));
+      return env.ASSETS.fetch(new Request(assetUrl.toString(), { method: "GET", headers: request.headers }));
     }
     return json({ error: "Not found" }, 404);
   },
