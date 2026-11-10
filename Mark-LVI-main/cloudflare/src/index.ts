@@ -2,7 +2,8 @@ export interface Env {
   DB: D1Database;
   JARVIS_BRIDGE_TOKEN: string;
   GEMINI_API_KEY: string;
-  GEMINI_MODEL?: string;\n  ASSETS: { fetch(request: Request): Promise<Response> };
+  GEMINI_MODEL?: string;
+  ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
 type TaskMode = "cloud" | "pc";
@@ -34,12 +35,12 @@ function randomToken(bytes = 32): string {
 }
 
 function bridgeAuthorized(request: Request, expected: string): boolean {
-  const supplied = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "").trim() ?? "";
+  const supplied = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ?? "";
   return Boolean(expected && supplied && supplied.length === expected.length && constantTimeEqual(supplied, expected));
 }
 
 async function userAuthorized(request: Request, env: Env): Promise<boolean> {
-  const supplied = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "").trim() ?? "";
+  const supplied = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ?? "";
   if (!supplied || supplied.length > 256) return false;
   const hash = await sha256(supplied);
   const row = await env.DB.prepare(
@@ -51,7 +52,7 @@ async function userAuthorized(request: Request, env: Env): Promise<boolean> {
 async function gemini(prompt: string, env: Env): Promise<string> {
   if (!env.GEMINI_API_KEY) throw new Error("Gemini API key is not configured in Cloudflare.");
   const model = env.GEMINI_MODEL || "gemini-3.5-flash-lite";
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const endpoint = \`https://generativelanguage.googleapis.com/v1beta/models/\${encodeURIComponent(model)}:generateContent\`;
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
@@ -60,10 +61,10 @@ async function gemini(prompt: string, env: Env): Promise<string> {
       generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
     }),
   });
-  if (!response.ok) throw new Error(`Gemini request failed (${response.status}): ${(await response.text()).slice(0, 1200)}`);
+  if (!response.ok) throw new Error(\`Gemini request failed (\${response.status}): \${(await response.text()).slice(0, 1200)}\`);
   const data = await response.json() as any;
   const parts = data?.candidates?.[0]?.content?.parts ?? [];
-  const answer = parts.map((part: any) => typeof part.text === "string" ? part.text : "").filter(Boolean).join("\\n").trim();
+  const answer = parts.map((part: any) => typeof part.text === "string" ? part.text : "").filter(Boolean).join("\n").trim();
   if (!answer) throw new Error("Gemini returned an empty response.");
   return answer.slice(0, 30000);
 }
@@ -99,7 +100,6 @@ export default {
       return json({ ok: true, service: "jarvis-cloudflare", status: "online" });
     }
 
-    // Desktop-only pairing and task bridge. The bridge secret never reaches the browser.
     if (path.startsWith("/bridge/")) {
       if (!bridgeAuthorized(request, env.JARVIS_BRIDGE_TOKEN)) return json({ error: "Unauthorized" }, 401);
 
@@ -139,10 +139,9 @@ export default {
         if (!updated.meta.changes) return json({ error: "PC task not found or no longer running" }, 404);
         return json({ ok: true });
       }
-      if (request.method === "GET" && !path.startsWith("/api/") && !path.startsWith("/bridge/")) return env.ASSETS.fetch(request);\n    return json({ error: "Not found" }, 404);
+      return json({ error: "Not found" }, 404);
     }
 
-    // One-time phone pairing. A PIN expires after ten minutes and can only be used once.
     if (request.method === "POST" && path === "/login") {
       let body: any;
       try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid JSON" }, 400); }
@@ -199,7 +198,7 @@ export default {
         return json({ tasks: results });
       }
 
-      const match = path.match(/^\\/api\\/tasks\\/([a-f0-9]{32})$/i);
+      const match = path.match(/^\/api\/tasks\/([a-f0-9]{32})$/i);
       if (request.method === "GET" && match) {
         const task = await env.DB.prepare(
           "SELECT id, prompt, mode, status, result, error, created_at, updated_at FROM tasks WHERE id = ?"
@@ -212,6 +211,12 @@ export default {
       }
     }
 
+    if (request.method === "GET" && !path.startsWith("/api/") && !path.startsWith("/bridge/")) {
+      const assetUrl = new URL(request.url);
+      if (path === "/login") assetUrl.pathname = "/login.html";
+      else if (path === "/") assetUrl.pathname = "/index.html";
+      return env.ASSETS.fetch(new Request(assetUrl, request));
+    }
     return json({ error: "Not found" }, 404);
   },
 
