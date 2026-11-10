@@ -138,7 +138,20 @@ export default {
     const path = url.pathname;
 
     if (request.method === "GET" && path === "/health") {
-      return json({ ok: true, service: "jarvis-cloudflare", status: "online" });
+      try {
+        await env.DB.prepare("SELECT 1 AS ok").first();
+        return json({
+          ok: true,
+          service: "jarvis-cloudflare",
+          status: "online",
+          database: "connected",
+          gemini_configured: Boolean(env.GEMINI_API_KEY),
+          model: env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+        });
+      } catch (error) {
+        console.error("JARVIS health check failed:", error);
+        return json({ ok: false, service: "jarvis-cloudflare", status: "degraded", database: "unavailable" }, 503);
+      }
     }
 
     if (path.startsWith("/bridge/")) {
@@ -210,6 +223,16 @@ export default {
 
     if (path.startsWith("/api/")) {
       if (!await userAuthorized(request, env)) return json({ error: "Unauthorized" }, 401);
+
+      if (request.method === "POST" && path === "/api/test-gemini") {
+        try {
+          const reply = await gemini("Reply with exactly: JARVIS API connection OK", env);
+          return json({ ok: true, provider: "Google Gemini", model: env.GEMINI_MODEL || "gemini-3.5-flash-lite", reply });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Gemini API test failed";
+          return json({ ok: false, provider: "Google Gemini", error: message.slice(0, 1500) }, 502);
+        }
+      }
 
       if (request.method === "POST" && path === "/api/command") {
         let body: any;
