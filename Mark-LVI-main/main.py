@@ -2317,6 +2317,7 @@ class JarvisLive:
                         await bridge.complete(task_id, "failed", error="Invalid task payload")
                     continue
                 self._cloud_bridge_task_id = task_id
+                self._last_out_logged = ""
                 if self._wake_enabled and not self._awake:
                     self.wake(reason="cloud remote command")
                 await self.session.send_client_content(
