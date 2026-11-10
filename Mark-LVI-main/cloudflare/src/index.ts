@@ -1,5 +1,6 @@
 export interface Env {
   DB: D1Database;
+  FILES: R2Bucket;
   JARVIS_BRIDGE_TOKEN: string;
   GEMINI_API_KEY: string;
   GEMINI_MODEL?: string;
@@ -223,6 +224,46 @@ export default {
 
     if (path.startsWith("/api/")) {
       if (!await userAuthorized(request, env)) return json({ error: "Unauthorized" }, 401);
+
+
+      if (request.method === "POST" && path === "/api/files") {
+        let form: FormData;
+        try { form = await request.formData(); } catch { return json({ error: "Expected multipart file upload." }, 400); }
+        const file = form.get("file");
+        if (!(file instanceof File)) return json({ error: "No file was supplied." }, 400);
+        if (file.size > 10 * 1024 * 1024) return json({ error: "Maximum file size is 10 MB." }, 413);
+        const safeName = file.name.replace(/[^a-zA-Z0-9._ -]/g, "_").replace(/\.{2,}/g, ".").slice(0, 120) || "upload";
+        const key = "uploads/" + crypto.randomUUID() + "/" + safeName;
+        await env.FILES.put(key, file.stream(), {
+          httpMetadata: { contentType: file.type || "application/octet-stream" },
+          customMetadata: { originalName: safeName, size: String(file.size) },
+        });
+        return json({ ok: true, key, name: safeName, size: file.size }, 201);
+      }
+
+      if (request.method === "GET" && path === "/api/files") {
+        const key = url.searchParams.get("key");
+        if (key) {
+          if (!/^uploads\/[a-f0-9-]{36}\/[a-zA-Z0-9._ -]{1,120}$/.test(key)) return json({ error: "Invalid file key." }, 400);
+          const object = await env.FILES.get(key);
+          if (!object) return json({ error: "File not found." }, 404);
+          const name = object.customMetadata?.originalName || "download";
+          return new Response(object.body, {
+            headers: {
+              "content-type": object.httpMetadata?.contentType || "application/octet-stream",
+              "content-disposition": "attachment; filename*=UTF-8''" + encodeURIComponent(name),
+              "cache-control": "private, no-store",
+            },
+          });
+        }
+        const listed = await env.FILES.list({ prefix: "uploads/", limit: 100 });
+        return json({ files: listed.objects.map(o => ({
+          key: o.key,
+          name: o.customMetadata?.originalName || o.key.split("/").pop(),
+          size: o.size,
+          uploaded: o.uploaded.toISOString(),
+        })) });
+      }
 
       if (request.method === "POST" && path === "/api/test-gemini") {
         try {
