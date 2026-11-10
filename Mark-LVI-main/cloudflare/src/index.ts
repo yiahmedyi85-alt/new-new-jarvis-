@@ -207,7 +207,12 @@ export default {
       }
 
       if (request.method === "POST" && path === "/api/wake") {
-        return json({ ok: true, message: "Wake signal queued when the desktop bridge is connected." });
+        const id = crypto.randomUUID().replace(/-/g, "");
+        const now = Date.now();
+        await env.DB.prepare(
+          "INSERT INTO tasks (id, prompt, mode, status, result, error, created_at, updated_at) VALUES (?, ?, 'pc', 'queued', '', '', ?, ?)"
+        ).bind(id, "Wake up and report that you are ready for remote commands.", now, now).run();
+        return json({ ok: true, task_id: id, message: "Wake request queued. Your computer must be on and JARVIS must be running." }, 201);
       }
     }
 
