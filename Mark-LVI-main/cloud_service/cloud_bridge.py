@@ -4,6 +4,8 @@ import asyncio
 import json
 import urllib.error
 import urllib.request
+import urllib.parse
+from pathlib import Path
 from typing import Any
 
 class CloudBridge:
@@ -34,6 +36,44 @@ class CloudBridge:
         if not isinstance(result, dict):
             raise RuntimeError("Cloud bridge returned an invalid response")
         return result
+
+
+    async def sync_files(self) -> list[Path]:
+        """Download new phone uploads into the user's Downloads/JARVIS Cloud Files folder."""
+        def _sync() -> list[Path]:
+            request = urllib.request.Request(
+                self.base_url + "/bridge/files",
+                headers={"Authorization": f"Bearer {self.token}", "Accept": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    payload = json.loads(response.read(1_000_000).decode("utf-8"))
+            except Exception as exc:
+                raise RuntimeError(f"Cloud file listing failed: {exc}") from exc
+            destination = Path.home() / "Downloads" / "JARVIS Cloud Files"
+            destination.mkdir(parents=True, exist_ok=True)
+            saved: list[Path] = []
+            for item in payload.get("files", []):
+                key = str(item.get("key", ""))
+                name = str(item.get("name", "download"))
+                if not key.startswith("uploads/") or not name or Path(name).name != name:
+                    continue
+                target = destination / name
+                if target.exists():
+                    continue
+                url = self.base_url + "/bridge/file?key=" + urllib.parse.quote(key, safe="")
+                req = urllib.request.Request(url, headers={"Authorization": f"Bearer {self.token}"})
+                try:
+                    with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                        data = response.read(10 * 1024 * 1024 + 1)
+                    if len(data) > 10 * 1024 * 1024:
+                        continue
+                    target.write_bytes(data)
+                    saved.append(target)
+                except Exception:
+                    continue
+            return saved
+        return await asyncio.to_thread(_sync)
 
     async def create_pairing(self) -> dict[str, Any]:
         return await asyncio.to_thread(self._request, "/bridge/pairing", "POST", {})
