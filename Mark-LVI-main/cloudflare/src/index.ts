@@ -2,7 +2,7 @@ export interface Env {
   DB: D1Database;
   JARVIS_BRIDGE_TOKEN: string;
   GEMINI_API_KEY: string;
-  GEMINI_MODEL?: string;
+  GEMINI_MODEL?: string;\n  ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
 type TaskMode = "cloud" | "pc";
@@ -139,7 +139,7 @@ export default {
         if (!updated.meta.changes) return json({ error: "PC task not found or no longer running" }, 404);
         return json({ ok: true });
       }
-      return json({ error: "Not found" }, 404);
+      if (request.method === "GET" && !path.startsWith("/api/") && !path.startsWith("/bridge/")) return env.ASSETS.fetch(request);\n    return json({ error: "Not found" }, 404);
     }
 
     // One-time phone pairing. A PIN expires after ten minutes and can only be used once.
