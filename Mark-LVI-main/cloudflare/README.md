@@ -91,7 +91,7 @@ Create the R2 bucket once before deployment:
 npx wrangler r2 bucket create jarvis-cloud-files
 ```
 
-The phone dashboard supports authenticated uploads and downloads through this bucket. Each file is limited to 10 MB. R2 has a free monthly allowance, but usage beyond the current allowance can incur charges. Check Cloudflare's current R2 pricing before enabling it. The desktop bridge does not yet automatically sync these R2 files into the PC's local upload folder.
+The phone dashboard supports authenticated uploads and downloads through this bucket. Each file is limited to 10 MB. R2 has a free monthly allowance, but usage beyond the current allowance can incur charges. Check Cloudflare's current R2 pricing before enabling it. When the desktop JARVIS bridge is online, it checks for new phone uploads every 20 seconds and downloads them into `Downloads/JARVIS Cloud Files`. It skips filenames that already exist. This sync requires JARVIS to be running on the PC.
 
 ## Use the phone dashboard
 
