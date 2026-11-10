@@ -11,7 +11,7 @@ Cloudflare Worker + D1 backend for the online JARVIS service. The original deskt
 - Authenticated task submission and status retrieval.
 - Separate bridge authentication. The bridge secret must stay on the desktop and must never appear in browser code.
 
-The cloud phone page now uses the original dashboard layout with cloud login, task submission, and task-result polling. The desktop app has an optional bridge client. On startup it reads `cloud_worker_url` and `cloud_bridge_token` from `config/api_keys.json`, creates a 10-minute pairing PIN, and prints it in the desktop activity log. The original desktop audio pipeline remains intact, including Gemini Live audio output through the selected computer speaker. The phone dashboard now has an optional spoken-reply toggle using the phone browser's speech synthesis. Phone microphone input currently uses browser speech-to-text. The original full-duplex PCM phone audio relay and cloud file transfer are not yet implemented.
+The cloud phone page now uses the original dashboard layout with cloud login, task submission, and task-result polling. The desktop app has an optional bridge client. On startup it reads `cloud_worker_url` and `cloud_bridge_token` from `config/api_keys.json`, creates a 10-minute pairing PIN, and prints it in the desktop activity log. The original desktop audio pipeline remains intact, including Gemini Live audio output through the selected computer speaker. The phone dashboard supports browser speech-to-text input and optional spoken replies using the phone browser's speech synthesis. A PC/Cloud selector controls whether typed and spoken phone commands are queued for the desktop or sent to the cloud Gemini worker. This is not a full-duplex Gemini Live audio relay. The local desktop dashboard has a separate authenticated phone-audio WebSocket, but that local WebSocket is not exposed through the Cloudflare service.
 
 ## Create the D1 database
 
@@ -55,7 +55,7 @@ npx wrangler secret put GEMINI_API_KEY
 
 Do not commit secrets or paste them into GitHub. The phone browser receives a short-lived session token after pairing, never the bridge token or Gemini key.
 
-Optional phone-call alerts use a Twilio account and a purchased/authorized Twilio number. The account owner must be an adult or have the provider's required guardian authorization. Calls are not free. Add the credentials as Cloudflare secrets:
+Optional phone-call alerts require a paid telephony provider, an eligible account holder, and an authorized phone number. Calls and number rental are not a free feature. Do not configure paid calling without the account holder's approval. If these credentials are not configured, JARVIS skips phone calls and tasks still complete normally. Add the credentials as Cloudflare secrets only when properly authorized:
 
 ```bash
 npx wrangler secret put TWILIO_ACCOUNT_SID
@@ -98,7 +98,7 @@ The phone dashboard supports authenticated uploads and downloads through this bu
 - Send a normal message to queue a PC task. The computer must be powered on and JARVIS must be running.
 - Start a message with `!cloud ` to run a Gemini cloud task. This works while the computer is off.
 - The dashboard checks task status every four seconds and displays the result when ready.
-- Browser microphone input uses speech-to-text where supported.
+- Browser microphone input uses speech-to-text where supported. Use the PC/Cloud selector beside the microphone to choose whether the recognized command runs on the connected desktop or through cloud Gemini.
 - Turn on the speaker button in the phone dashboard to hear completed replies using your phone's built-in speech voice. This is browser text-to-speech, not the original Gemini Live voice.
 
 ## API outline
