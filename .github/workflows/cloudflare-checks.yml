@@ -1,0 +1,41 @@
+name: JARVIS cloud checks
+
+on:
+  push:
+    branches:
+      - cloud-online-jarvis
+    paths:
+      - "Mark-LVI-main/cloudflare/**"
+      - "Mark-LVI-main/cloud_service/cloud_bridge.py"
+      - "Mark-LVI-main/main.py"
+      - ".github/workflows/cloudflare-checks.yml"
+  pull_request:
+    branches:
+      - cloud-online-jarvis
+    paths:
+      - "Mark-LVI-main/cloudflare/**"
+      - "Mark-LVI-main/cloud_service/cloud_bridge.py"
+      - "Mark-LVI-main/main.py"
+
+jobs:
+  cloud-worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Mark-LVI-main/cloudflare
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run typecheck
+
+  desktop-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m py_compile Mark-LVI-main/main.py Mark-LVI-main/cloud_service/cloud_bridge.py
