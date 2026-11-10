@@ -11,7 +11,7 @@ Cloudflare Worker + D1 backend for the online JARVIS service. The original deskt
 - Authenticated task submission and status retrieval.
 - Separate bridge authentication. The bridge secret must stay on the desktop and must never appear in browser code.
 
-The cloud phone page now uses the original dashboard layout with cloud login, task submission, and task-result polling. The desktop app has an optional bridge client. On startup it reads `cloud_worker_url` and `cloud_bridge_token` from `config/api_keys.json`, creates a 10-minute pairing PIN, and prints it in the desktop activity log. The existing full-duplex phone audio WebSocket and cloud file transfer are not implemented in this Worker version. Browser speech recognition can send voice-to-text commands where the browser supports it.
+The cloud phone page now uses the original dashboard layout with cloud login, task submission, and task-result polling. The desktop app has an optional bridge client. On startup it reads `cloud_worker_url` and `cloud_bridge_token` from `config/api_keys.json`, creates a 10-minute pairing PIN, and prints it in the desktop activity log. The original desktop audio pipeline remains intact, including Gemini Live audio output through the selected computer speaker. The phone dashboard now has an optional spoken-reply toggle using the phone browser's speech synthesis. Phone microphone input currently uses browser speech-to-text. The original full-duplex PCM phone audio relay and cloud file transfer are not yet implemented.
 
 ## Create the D1 database
 
@@ -72,14 +72,24 @@ Use phone numbers in international E.164 format, for example `+201XXXXXXXXX`. If
 npx wrangler deploy
 ```
 
-Test `GET /health` on the deployed Worker URL.
+Test `GET /health` on the deployed Worker URL. It checks the Worker and D1 connection and reports whether the Gemini key is configured.
+
+After pairing your phone, you can test the real Gemini API connection with the authenticated endpoint:
+
+```bash
+curl -X POST https://YOUR-WORKER.workers.dev/api/test-gemini \\
+  -H "Authorization: Bearer YOUR_PHONE_SESSION_TOKEN"
+```
+
+A successful response confirms that Cloudflare can reach Gemini using the configured secret. This test makes a small Gemini API request.
 
 ## Use the phone dashboard
 
 - Send a normal message to queue a PC task. The computer must be powered on and JARVIS must be running.
 - Start a message with `!cloud ` to run a Gemini cloud task. This works while the computer is off.
 - The dashboard checks task status every four seconds and displays the result when ready.
-- Browser microphone input uses speech-to-text where supported. It is not the original live PCM audio relay.
+- Browser microphone input uses speech-to-text where supported.
+- Turn on the speaker button in the phone dashboard to hear completed replies using your phone's built-in speech voice. This is browser text-to-speech, not the original Gemini Live voice.
 
 ## API outline
 
