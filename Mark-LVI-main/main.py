@@ -2480,6 +2480,8 @@ class JarvisLive:
                 _cloud_token = str(_cloud_cfg.get("cloud_bridge_token", "")).strip()
                 if _cloud_url and _cloud_token:
                     self._cloud_bridge = CloudBridge(_cloud_url, _cloud_token)
+                    _pairing = await self._cloud_bridge.create_pairing()
+                    self.ui.write_log(f"SYS: Cloud phone pairing code: {_pairing.get('pin', 'Unavailable')} (valid for 10 minutes).")
                     asyncio.create_task(self._process_cloud_bridge_tasks())
                     self.ui.write_log("SYS: Cloud bridge configured.")
                 else:
