@@ -11,7 +11,7 @@ Cloudflare Worker + D1 backend for the online JARVIS service. The original deskt
 - Authenticated task submission and status retrieval.
 - Separate bridge authentication. The bridge secret must stay on the desktop and must never appear in browser code.
 
-The existing phone HTML has not yet been adapted to these endpoints, and the desktop bridge client is not yet integrated. Do not treat this backend as a finished deployment.
+The cloud phone page now uses the original dashboard layout with cloud login, task submission, and task-result polling. The desktop app has an optional bridge client. On startup it reads `cloud_worker_url` and `cloud_bridge_token` from `config/api_keys.json`, creates a 10-minute pairing PIN, and prints it in the desktop activity log. The existing full-duplex phone audio WebSocket and cloud file transfer are not implemented in this Worker version. Browser speech recognition can send voice-to-text commands where the browser supports it.
 
 ## Create the D1 database
 
@@ -30,6 +30,19 @@ Apply the current schema:
 ```bash
 npx wrangler d1 execute jarvis-cloud-db --remote --file=./schema.sql
 ```
+
+## Configure the desktop bridge
+
+After deployment, add these two fields to the existing `Mark-LVI-main/config/api_keys.json` file on the desktop. Keep the bridge token private.
+
+```json
+{
+  "cloud_worker_url": "https://YOUR-WORKER.workers.dev",
+  "cloud_bridge_token": "YOUR_LONG_RANDOM_BRIDGE_TOKEN"
+}
+```
+
+Merge these fields into the existing JSON object. Do not replace your current Gemini settings. Restart JARVIS. It will print a one-time phone pairing PIN in the activity log. Enter that PIN on the cloud dashboard login page.
 
 ## Configure secrets
 
