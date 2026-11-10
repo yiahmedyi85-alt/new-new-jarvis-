@@ -41,4 +41,4 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m py_compile Mark-LVI-main/main.py Mark-LVI-main/cloud_service/cloud_bridge.py
+      - run: python -m py_compile Mark-LVI-main/main.py Mark-LVI-main/core/gemini.py Mark-LVI-main/dashboard/server.py Mark-LVI-main/cloud_service/cloud_bridge.py
