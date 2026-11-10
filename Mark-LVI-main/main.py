@@ -62,6 +62,7 @@ from memory.memory_manager import (
 # Only tools that are tied to live-session state stay inline in this file
 # (screen_process, close_camera, save_memory, manage_monitor, shutdown_jarvis,
 # system_status).
+from cloud_service.cloud_bridge import CloudBridge
 from core import outcome
 from core.action_loader import strip_meta
 from actions.screen_processor  import _capture_camera, _capture_screen
@@ -1782,6 +1783,16 @@ class JarvisLive:
                             if full_out and len(full_out) >= _REPEAT_MIN and self._last_out_logged:
                                 if full_out in self._last_out_logged:
                                     full_out = ""
+                            if full_out and self._cloud_bridge and self._cloud_bridge_task_id:
+                                _bridge_task_id = self._cloud_bridge_task_id
+                                try:
+                                    await self._cloud_bridge.complete(_bridge_task_id, "completed", result=full_out)
+                                    self.ui.write_log("SYS: Cloud PC task result delivered.")
+                                except Exception as _bridge_err:
+                                    print(f"[CloudBridge] Could not return task result: {_bridge_err}")
+                                finally:
+                                    self._cloud_bridge_task_id = None
+
                             if full_out:
                                 self._last_out_logged = full_out
                                 self.ui.write_log(f"{self._asst_name}: {full_out}")
@@ -2273,6 +2284,47 @@ class JarvisLive:
                 print(f"[Dashboard] Command error: {e}")
                 await asyncio.sleep(0.5)
 
+    async def _process_cloud_bridge_tasks(self) -> None:
+        """Claim PC tasks from Cloudflare and route them through Gemini Live."""
+        bridge = self._cloud_bridge
+        if bridge is None:
+            return
+        while True:
+            try:
+                if self._cloud_bridge_task_id is not None or not self.session:
+                    await asyncio.sleep(2)
+                    continue
+                task = await bridge.next_task()
+                if not task:
+                    await asyncio.sleep(3)
+                    continue
+                task_id = str(task.get("id", ""))
+                prompt = str(task.get("prompt", "")).strip()
+                if not task_id or not prompt:
+                    if task_id:
+                        await bridge.complete(task_id, "failed", error="Invalid task payload")
+                    continue
+                self._cloud_bridge_task_id = task_id
+                if self._wake_enabled and not self._awake:
+                    self.wake(reason="cloud remote command")
+                await self.session.send_client_content(
+                    turns={"role": "user", "parts": [{"text": prompt}]},
+                    turn_complete=True,
+                )
+                self.ui.write_log(f"[Cloud Web]: {prompt}")
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                task_id = self._cloud_bridge_task_id
+                print(f"[CloudBridge] Task error: {exc}")
+                if task_id:
+                    try:
+                        await bridge.complete(task_id, "failed", error=str(exc))
+                    except Exception:
+                        pass
+                    self._cloud_bridge_task_id = None
+                await asyncio.sleep(3)
+
     # ── main loop ───────────────────────────────────────────────────────────
 
     # ── Which engine holds the conversation ──────────────────────────────────
@@ -2417,6 +2469,23 @@ class JarvisLive:
         # Enumerate audio devices off-thread. The settings drawer must never pay
         # for host-API enumeration on the Qt thread.
         audio_devices.prefetch()
+
+        self._cloud_bridge = None
+        self._cloud_bridge_task_id = None
+        try:
+            _cloud_cfg_path = BASE_DIR / "config" / "api_keys.json"
+            if _cloud_cfg_path.exists():
+                _cloud_cfg = json.loads(_cloud_cfg_path.read_text(encoding="utf-8"))
+                _cloud_url = str(_cloud_cfg.get("cloud_worker_url", "")).strip().rstrip("/")
+                _cloud_token = str(_cloud_cfg.get("cloud_bridge_token", "")).strip()
+                if _cloud_url and _cloud_token:
+                    self._cloud_bridge = CloudBridge(_cloud_url, _cloud_token)
+                    asyncio.create_task(self._process_cloud_bridge_tasks())
+                    self.ui.write_log("SYS: Cloud bridge configured.")
+                else:
+                    print("[CloudBridge] Not configured. Add cloud_worker_url and cloud_bridge_token to config/api_keys.json.")
+        except Exception as _cloud_err:
+            print(f"[CloudBridge] Disabled: {_cloud_err}")
 
         # Start dashboard (optional — needs: pip install fastapi "uvicorn[standard]" cryptography)
         try:
