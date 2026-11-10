@@ -147,6 +147,7 @@
     <label class="btn-attach" for="file-inp" title="Send file">📎</label>
     <input type="file" id="file-inp" multiple accept="*/*" style="display:none">
     <button id="mic-btn" onclick="doMic()" title="Voice command">🎤</button>
+    <button id="voice-btn" class="btn-attach" onclick="toggleVoice()" title="Speak JARVIS replies" aria-pressed="false">🔊</button>
     <button class="btn btn-wake" id="wake" onclick="doWake()">WAKE</button>
     <button class="btn btn-send" onclick="doSend()">SEND</button>
   </footer>
@@ -210,6 +211,7 @@
           if (task.status === 'completed' && !_seen.has(task.id + ':done')) {
             _seen.add(task.id + ':done');
             append('jarvis', task.result || 'Task completed.');
+            speakReply(task.result || 'Task completed.');
             toast('Task completed');
           } else if (task.status === 'failed' && !_seen.has(task.id + ':failed')) {
             _seen.add(task.id + ':failed');
@@ -250,6 +252,31 @@
     document.getElementById('inp').addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
     });
+    const voiceBtn = document.getElementById('voice-btn');
+    let voiceRepliesEnabled = false;
+    function toggleVoice() {
+      if (!('speechSynthesis' in window)) {
+        sys('Spoken replies are not supported by this browser.');
+        return;
+      }
+      voiceRepliesEnabled = !voiceRepliesEnabled;
+      voiceBtn.textContent = voiceRepliesEnabled ? '🔈' : '🔊';
+      voiceBtn.setAttribute('aria-pressed', String(voiceRepliesEnabled));
+      toast(voiceRepliesEnabled ? 'JARVIS voice replies enabled' : 'JARVIS voice replies muted');
+      if (!voiceRepliesEnabled) window.speechSynthesis.cancel();
+    }
+    function speakReply(text) {
+      if (!voiceRepliesEnabled || !('speechSynthesis' in window) || !text) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(String(text).slice(0, 3500));
+      utterance.rate = 1;
+      utterance.pitch = 0.95;
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v => /^en/i.test(v.lang) && /natural|google|microsoft/i.test(v.name))
+        || voices.find(v => /^en/i.test(v.lang));
+      if (preferred) utterance.voice = preferred;
+      window.speechSynthesis.speak(utterance);
+    }
     const micBtn = document.getElementById('mic-btn');
     let recognition = null;
     function doMic() {
