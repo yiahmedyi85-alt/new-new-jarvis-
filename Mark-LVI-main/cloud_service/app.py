@@ -12,7 +12,7 @@ import secrets
 import sqlite3
 import time
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -34,10 +34,18 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
 TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "").strip()
 OWNER_PHONE_NUMBER = os.getenv("OWNER_PHONE_NUMBER", "").strip()
 
-def db() -> sqlite3.Connection:
+@contextmanager
+def db():
     conn = sqlite3.connect(DB_PATH, timeout=20)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def init_db() -> None:
     with db() as conn:
@@ -102,7 +110,7 @@ async def notify_by_phone(message: str) -> None:
     if not all((TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, OWNER_PHONE_NUMBER, PUBLIC_BASE_URL)):
         return
     # TwiML is served from this service. Keep the spoken result short.
-    twiml_url = f"{PUBLIC_BASE_URL}/voice/complete?message={httpx.QueryParams({'message': message[:900]})}"
+    twiml_url = f"{PUBLIC_BASE_URL}/voice/complete?{httpx.QueryParams({'message': message[:900]})}"
     url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Calls.json"
     async with httpx.AsyncClient(timeout=20, auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)) as client:
         response = await client.post(url, data={
