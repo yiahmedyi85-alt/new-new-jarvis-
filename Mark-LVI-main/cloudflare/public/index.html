@@ -188,8 +188,8 @@
     }
     function setStatus(active) {
       pill.className = active ? 'pill on' : 'pill';
-      stTxt.textContent = active ? 'Online' : 'Waiting';
-      if (active) wake.classList.remove('show'); else wake.classList.add('show');
+      stTxt.textContent = active ? 'Cloud' : 'Offline';
+      wake.classList.add('show');
     }
     let _seen = new Set();
     let _busy = false;
