@@ -2289,8 +2289,17 @@ class JarvisLive:
         bridge = self._cloud_bridge
         if bridge is None:
             return
+        _last_file_sync = 0.0
         while True:
             try:
+                if time.monotonic() - _last_file_sync >= 20:
+                    try:
+                        _downloaded = await bridge.sync_files()
+                        for _file in _downloaded:
+                            self.ui.write_log(f"SYS: Cloud file downloaded: {_file.name}")
+                    except Exception as _file_err:
+                        print(f"[CloudBridge] File sync unavailable: {_file_err}")
+                    _last_file_sync = time.monotonic()
                 if self._cloud_pairing_ready and (time.monotonic() - self._cloud_pairing_created) > 9 * 60:
                     self._cloud_pairing_ready = False
                 if not self._cloud_pairing_ready:
