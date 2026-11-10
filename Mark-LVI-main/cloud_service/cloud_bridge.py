@@ -35,6 +35,9 @@ class CloudBridge:
             raise RuntimeError("Cloud bridge returned an invalid response")
         return result
 
+    async def create_pairing(self) -> dict[str, Any]:
+        return await asyncio.to_thread(self._request, "/bridge/pairing", "POST", {})
+
     async def next_task(self) -> dict[str, Any] | None:
         result = await asyncio.to_thread(self._request, "/bridge/next")
         task = result.get("task")
