@@ -55,6 +55,17 @@ npx wrangler secret put GEMINI_API_KEY
 
 Do not commit secrets or paste them into GitHub. The phone browser receives a short-lived session token after pairing, never the bridge token or Gemini key.
 
+Optional phone-call alerts use a Twilio account and a purchased/authorized Twilio number. The account owner must be an adult or have the provider's required guardian authorization. Calls are not free. Add the credentials as Cloudflare secrets:
+
+```bash
+npx wrangler secret put TWILIO_ACCOUNT_SID
+npx wrangler secret put TWILIO_AUTH_TOKEN
+npx wrangler secret put TWILIO_FROM_NUMBER
+npx wrangler secret put JARVIS_NOTIFY_NUMBER
+```
+
+Use phone numbers in international E.164 format, for example `+201XXXXXXXXX`. If these four secrets are absent, JARVIS skips phone calls and tasks still complete normally.
+
 ## Deploy and check
 
 ```bash
