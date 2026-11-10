@@ -52,7 +52,7 @@ async function userAuthorized(request: Request, env: Env): Promise<boolean> {
 async function gemini(prompt: string, env: Env): Promise<string> {
   if (!env.GEMINI_API_KEY) throw new Error("Gemini API key is not configured in Cloudflare.");
   const model = env.GEMINI_MODEL || "gemini-3.5-flash-lite";
-  const endpoint = \`https://generativelanguage.googleapis.com/v1beta/models/\${encodeURIComponent(model)}:generateContent\`;
+  const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent";
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
@@ -61,7 +61,7 @@ async function gemini(prompt: string, env: Env): Promise<string> {
       generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
     }),
   });
-  if (!response.ok) throw new Error(\`Gemini request failed (\${response.status}): \${(await response.text()).slice(0, 1200)}\`);
+  if (!response.ok) throw new Error("Gemini request failed (" + response.status + "): " + (await response.text()).slice(0, 1200));
   const data = await response.json() as any;
   const parts = data?.candidates?.[0]?.content?.parts ?? [];
   const answer = parts.map((part: any) => typeof part.text === "string" ? part.text : "").filter(Boolean).join("\n").trim();
