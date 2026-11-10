@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #07090f;
+      --surface: rgba(255,255,255,0.04);
+      --border:  rgba(255,255,255,0.07);
+      --accent:  #6366f1;
+      --adim:    rgba(99,102,241,0.14);
+      --text:    #dde3ed;
+      --muted:   #5e6a7e;
+      --green:   #22c55e;
+      --gdim:    rgba(34,197,94,0.14);
+    }
+    html, body {
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      background: rgba(7,9,15,0.95);
+    }
+    .logo { font-size: 15px; font-weight: 700; letter-spacing: 6px; }
+    .logo em { color: var(--accent); font-style: normal; }
+    .pill {
+      display: flex; align-items: center; gap: 6px; padding: 4px 11px;
+      border-radius: 99px; background: var(--surface); border: 1px solid var(--border);
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--muted); transition: all 0.3s;
+    }
+    .pill.on { background: var(--gdim); border-color: rgba(34,197,94,0.3); color: var(--green); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+    .pill.on .dot { background: var(--green); animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .spacer { flex: 1; }
+    .enc-badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.5px; padding: 3px 8px;
+      border-radius: 4px; display: none;
+    }
+    .enc-badge.on  { display: block; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: var(--green); }
+    .enc-badge.off { display: block; background: rgba(255,100,100,0.08); border: 1px solid rgba(255,100,100,0.2); color: #f87171; }
+    .url { font-size: 10px; font-family: monospace; color: var(--muted); padding: 4px 9px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+
+    /* ── FEED ── */
+    main { flex: 1; overflow-y: auto; padding: 14px 16px 8px; display: flex; flex-direction: column; gap: 10px; }
+    main::-webkit-scrollbar { width: 3px; }
+    main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .msg { max-width: 82%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.55; animation: pop 0.18s ease; }
+    @keyframes pop { from { opacity:0; transform:translateY(4px); } }
+    .msg-j   { align-self:flex-start; background:var(--adim);   border:1px solid rgba(99,102,241,0.18); border-bottom-left-radius:4px; }
+    .msg-u   { align-self:flex-end;   background:var(--surface); border:1px solid var(--border);        border-bottom-right-radius:4px; }
+    .msg-sys { align-self:center; font-size:11px; color:var(--muted); padding:2px 0; background:transparent; border:none; letter-spacing:0.3px; }
+    .lbl { font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase; opacity:0.45; margin-bottom:4px; }
+    .msg-j .lbl { color:var(--accent); }
+    .msg-u .lbl { color:var(--muted); text-align:right; }
+
+    /* ── FILE CARD ── */
+    .msg-file {
+      align-self: flex-end;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; border-bottom-right-radius: 4px;
+      padding: 11px 14px; display: flex; align-items: center; gap: 12px;
+      max-width: 82%; animation: pop 0.18s ease;
+    }
+    .fc-icon { font-size: 26px; flex-shrink: 0; }
+    .fc-meta { flex: 1; min-width: 0; }
+    .fc-lbl  { font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase; opacity:0.45; color:var(--muted); margin-bottom:4px; }
+    .fc-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fc-size { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .fc-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; margin-top: 7px; overflow: hidden; }
+    .fc-bar { height: 100%; width: 0%; background: var(--accent); border-radius: 2px; transition: width 0.12s linear; }
+    .fc-status { font-size: 10px; font-weight: 700; letter-spacing: 1px; flex-shrink: 0; color: var(--muted); }
+    .fc-status.done { color: var(--green); }
+    .fc-status.err  { color: #f87171; }
+    .fc-dl { display:block; margin-top:6px; font-size:11px; color:var(--accent); text-decoration:none; font-weight:600; }
+    .fc-dl:hover { opacity: 0.8; }
+
+    /* ── FOOTER ── */
+    footer { flex-shrink:0; padding:10px 14px; border-top:1px solid var(--border); background:rgba(7,9,15,0.95); display:flex; gap:8px; align-items:center; }
+    #inp { flex:1; padding:11px 14px; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; color:var(--text); font-size:14px; outline:none; transition:border-color 0.15s; }
+    #inp:focus { border-color: var(--accent); }
+    #inp::placeholder { color: var(--muted); }
+    .btn { padding:11px 15px; border:none; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:1.5px; cursor:pointer; transition:opacity 0.15s,transform 0.1s; }
+    .btn:active { transform: scale(0.96); }
+    .btn:hover  { opacity: 0.82; }
+    .btn-send { background: var(--accent); color: #fff; }
+    .btn-wake { background:var(--surface); border:1px solid var(--border); color:var(--muted); display:none; }
+    .btn-wake.show { display:block; color:var(--green); border-color:rgba(34,197,94,0.35); }
+    .btn-attach {
+      background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+      padding: 11px 13px; font-size: 16px; line-height: 1; border-radius: 12px;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .btn-attach:hover  { opacity: 0.82; border-color: var(--accent); color: var(--accent); }
+    .btn-attach:active { transform: scale(0.96); }
+
+    /* ── MIC BUTTON ── */
+    #mic-btn {
+      background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+      padding: 11px 13px; font-size: 16px; line-height: 1; border-radius: 12px;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s, background 0.2s, border-color 0.2s;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    #mic-btn:hover  { opacity: 0.82; border-color: var(--accent); color: var(--accent); }
+    #mic-btn:active { transform: scale(0.96); }
+    #mic-btn.recording {
+      background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.45); color: #ef4444;
+      animation: mic-pulse 1s ease-in-out infinite;
+    }
+    #mic-btn.unsupported { opacity: 0.3; cursor: not-allowed; }
+    @keyframes mic-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.65;transform:scale(0.97)} }
+
+    /* ── TOAST ── */
+    #toast {
+      position:fixed; top:66px; left:50%; transform:translateX(-50%) translateY(-8px);
+      background:rgba(34,197,94,0.16); border:1px solid rgba(34,197,94,0.4);
+      color:var(--green); font-size:12px; font-weight:700; letter-spacing:1px;
+      padding:7px 18px; border-radius:99px;
+      opacity:0; transition:opacity 0.22s,transform 0.22s;
+      pointer-events:none; white-space:nowrap;
+    }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div id="toast"></div>
+  <header>
+    <div class="logo"><em>J</em>ARVIS</div>
+    <div class="pill" id="pill"><span class="dot"></span><span id="st">Connecting</span></div>
+    <div class="enc-badge" id="enc">AES-GCM</div>
+    <div class="spacer"></div>
+    <div class="url">__IP__:__PORT__</div>
+  </header>
+  <main id="feed"></main>
+  <footer>
+    <input id="inp" placeholder="Send a command to JARVIS…" autocomplete="off">
+    <label class="btn-attach" for="file-inp" title="Send file">📎</label>
+    <input type="file" id="file-inp" multiple accept="*/*" style="display:none">
+    <button id="mic-btn" onclick="doMic()" title="Voice command">🎤</button>
+    <button class="btn btn-wake" id="wake" onclick="doWake()">WAKE</button>
+    <button class="btn btn-send" onclick="doSend()">SEND</button>
+  </footer>
+
+  <script>
+    const _authToken = sessionStorage.getItem('jarvis_token');
+    if (!_authToken) location.replace('/login');
+    function _authFetch(url, opts = {}) {
+      opts.headers = Object.assign({}, opts.headers, { Authorization: `Bearer ${_authToken}` });
+      return fetch(url, opts);
+    }
+    const feed = document.getElementById('feed');
+    const pill = document.getElementById('pill');
+    const stTxt = document.getElementById('st');
+    const wake = document.getElementById('wake');
+    const encBadge = document.getElementById('enc');
+    encBadge.className = 'enc-badge on';
+    encBadge.textContent = 'CLOUD';
+    document.querySelector('.url').textContent = location.host;
+    function append(speaker, text) {
+      const d = document.createElement('div');
+      d.className = speaker === 'jarvis' ? 'msg msg-j' : 'msg msg-u';
+      d.innerHTML = `<div class="lbl">${speaker === 'jarvis' ? 'Jarvis' : 'You'}</div>${esc(String(text || ''))}`;
+      feed.appendChild(d); feed.scrollTop = feed.scrollHeight;
+    }
+    function sys(text) {
+      const d = document.createElement('div');
+      d.className = 'msg msg-sys'; d.textContent = text;
+      feed.appendChild(d); feed.scrollTop = feed.scrollHeight;
+    }
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+    function setStatus(active) {
+      pill.className = active ? 'pill on' : 'pill';
+      stTxt.textContent = active ? 'Online' : 'Waiting';
+      if (active) wake.classList.remove('show'); else wake.classList.add('show');
+    }
+    let _seen = new Set();
+    let _busy = false;
+    async function refreshTasks() {
+      if (_busy || !_authToken) return;
+      _busy = true;
+      try {
+        const response = await _authFetch('/api/tasks');
+        if (response.status === 401) { sessionStorage.removeItem('jarvis_token'); location.replace('/login'); return; }
+        if (!response.ok) throw new Error('Cloud connection unavailable');
+        const data = await response.json();
+        setStatus(true);
+        for (const task of (data.tasks || []).reverse()) {
+          if (!_seen.has(task.id)) {
+            _seen.add(task.id);
+            if (task.status === 'queued') sys('Task queued. Waiting for JARVIS desktop bridge.');
+          }
+          if (task.status === 'completed' && !_seen.has(task.id + ':done')) {
+            _seen.add(task.id + ':done');
+            append('jarvis', task.result || 'Task completed.');
+            toast('Task completed');
+          } else if (task.status === 'failed' && !_seen.has(task.id + ':failed')) {
+            _seen.add(task.id + ':failed');
+            append('jarvis', 'Task failed: ' + (task.error || 'Unknown error'));
+          }
+        }
+      } catch (e) { setStatus(false); }
+      finally { _busy = false; }
+    }
+    async function doSend() {
+      const inp = document.getElementById('inp');
+      const raw = inp.value.trim();
+      if (!raw) return;
+      inp.value = '';
+      append('user', raw);
+      const cloudMode = raw.startsWith('!cloud ');
+      const text = cloudMode ? raw.slice(7).trim() : raw;
+      if (!text) return;
+      try {
+        const response = await _authFetch(cloudMode ? '/api/tasks' : '/api/command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cloudMode ? { prompt: text, mode: 'cloud' } : { text })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not submit task');
+        sys(cloudMode ? 'Cloud task submitted. It can run while your laptop is off.' : 'PC task submitted. Your laptop must be online with JARVIS running.');
+        if (data.task_id) _seen.add(data.task_id);
+      } catch (e) { sys('Error: ' + e.message); }
+    }
+    async function doWake() {
+      try {
+        const r = await _authFetch('/api/wake', { method: 'POST' });
+        const d = await r.json();
+        sys(d.message || 'Wake request sent to the desktop bridge.');
+      } catch (_) { sys('Could not contact cloud service.'); }
+    }
+    document.getElementById('inp').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+    });
+    const micBtn = document.getElementById('mic-btn');
+    let recognition = null;
+    function doMic() {
+      const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Speech) { sys('Voice recognition is not supported by this browser.'); return; }
+      if (recognition) { recognition.stop(); recognition = null; micBtn.classList.remove('recording'); micBtn.textContent='🎤'; return; }
+      recognition = new Speech();
+      recognition.lang = navigator.language || 'en-US';
+      recognition.interimResults = false;
+      recognition.onresult = e => {
+        document.getElementById('inp').value = e.results[0][0].transcript;
+        doSend();
+      };
+      recognition.onerror = () => sys('Voice recognition failed. Check microphone permission.');
+      recognition.onend = () => { recognition = null; micBtn.classList.remove('recording'); micBtn.textContent='🎤'; };
+      recognition.start(); micBtn.classList.add('recording'); micBtn.textContent='⏹';
+    }
+    document.getElementById('file-inp').addEventListener('change', function () {
+      if (this.files.length) sys('Cloud file transfer is not enabled yet. Text commands are available.');
+      this.value = '';
+    });
+    async function _unusedCloudVoicePlaceholder() {}
+    setStatus(false);
+    sys('Connected to JARVIS Cloud. Use !cloud before a prompt for an online task. PC commands require your laptop bridge.');
+    refreshTasks();
+    setInterval(refreshTasks, 4000);
+  </script>
+</body>
+</html>
