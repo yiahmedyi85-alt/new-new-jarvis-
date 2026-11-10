@@ -9,7 +9,6 @@ crons = ["* * * * *"]
 binding = "DB"
 database_name = "jarvis-cloud-db"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
-migrations_dir = "."
 
 [vars]
 GEMINI_MODEL = "gemini-2.5-flash"
