@@ -147,6 +147,7 @@
     <label class="btn-attach" for="file-inp" title="Send file">📎</label>
     <input type="file" id="file-inp" multiple accept="*/*" style="display:none">
     <button id="mic-btn" onclick="doMic()" title="Voice command">🎤</button>
+    <button id="mode-btn" class="btn-attach" onclick="toggleTaskMode()" title="Choose where JARVIS runs">PC</button>
     <button id="voice-btn" class="btn-attach" onclick="toggleVoice()" title="Speak JARVIS replies" aria-pressed="false">🔊</button>
     <button class="btn btn-wake" id="wake" onclick="doWake()">WAKE</button>
     <button class="btn btn-send" onclick="doSend()">SEND</button>
@@ -221,14 +222,26 @@
       } catch (e) { setStatus(false); }
       finally { _busy = false; }
     }
+    let taskMode = 'pc';
+    function toggleTaskMode() {
+      taskMode = taskMode === 'pc' ? 'cloud' : 'pc';
+      const button = document.getElementById('mode-btn');
+      button.textContent = taskMode === 'cloud' ? 'CLOUD' : 'PC';
+      button.title = taskMode === 'cloud'
+        ? 'Cloud mode: runs while your laptop is off'
+        : 'PC mode: requires your laptop and JARVIS to be running';
+      button.setAttribute('aria-label', button.title);
+      toast(taskMode === 'cloud' ? 'Cloud mode selected' : 'PC mode selected');
+    }
     async function doSend() {
       const inp = document.getElementById('inp');
       const raw = inp.value.trim();
       if (!raw) return;
       inp.value = '';
       append('user', raw);
-      const cloudMode = raw.startsWith('!cloud ');
-      const text = cloudMode ? raw.slice(7).trim() : raw;
+      const forcedCloud = raw.startsWith('!cloud ');
+      const cloudMode = forcedCloud || taskMode === 'cloud';
+      const text = forcedCloud ? raw.slice(7).trim() : raw;
       if (!text) return;
       try {
         const response = await _authFetch(cloudMode ? '/api/tasks' : '/api/command', {
