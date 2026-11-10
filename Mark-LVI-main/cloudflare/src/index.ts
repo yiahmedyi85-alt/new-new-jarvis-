@@ -4,6 +4,10 @@ export interface Env {
   GEMINI_API_KEY: string;
   GEMINI_MODEL?: string;
   ASSETS: { fetch(request: Request): Promise<Response> };
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_FROM_NUMBER?: string;
+  JARVIS_NOTIFY_NUMBER?: string;
 }
 
 type TaskMode = "cloud" | "pc";
@@ -69,6 +73,33 @@ async function gemini(prompt: string, env: Env): Promise<string> {
   return answer.slice(0, 30000);
 }
 
+
+async function notifyPhone(env: Env, status: "completed" | "failed", mode: "cloud" | "pc"): Promise<void> {
+  const sid = env.TWILIO_ACCOUNT_SID;
+  const token = env.TWILIO_AUTH_TOKEN;
+  const from = env.TWILIO_FROM_NUMBER;
+  const to = env.JARVIS_NOTIFY_NUMBER;
+  if (!sid || !token || !from || !to) return;
+  const message = status === "completed"
+    ? "JARVIS has completed your " + mode + " task."
+    : "JARVIS encountered an error while processing your " + mode + " task.";
+  const twiml = "<Response><Say voice=\"alice\">" + message + "</Say></Response>";
+  const credentials = btoa(sid + ":" + token);
+  const body = new URLSearchParams({ To: to, From: from, Twiml: twiml });
+  const response = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + sid + "/Calls.json", {
+    method: "POST",
+    headers: {
+      "authorization": "Basic " + credentials,
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 1000);
+    console.error("JARVIS phone notification failed:", response.status, detail);
+  }
+}
+
 async function runCloudTasks(env: Env): Promise<void> {
   const row = await env.DB.prepare(
     "SELECT id, prompt FROM tasks WHERE mode = 'cloud' AND status = 'queued' ORDER BY created_at LIMIT 1"
@@ -83,11 +114,13 @@ async function runCloudTasks(env: Env): Promise<void> {
     await env.DB.prepare(
       "UPDATE tasks SET status = 'completed', result = ?, error = '', updated_at = ? WHERE id = ?"
     ).bind(result, Date.now(), row.id).run();
+    await notifyPhone(env, "completed", "cloud");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown task error";
     await env.DB.prepare(
       "UPDATE tasks SET status = 'failed', error = ?, updated_at = ? WHERE id = ?"
     ).bind(message.slice(0, 3000), Date.now(), row.id).run();
+    await notifyPhone(env, "failed", "cloud");
   }
 }
 
@@ -137,6 +170,7 @@ export default {
           "UPDATE tasks SET status = ?, result = ?, error = ?, updated_at = ? WHERE id = ? AND mode = 'pc' AND status = 'running'"
         ).bind(body.status, String(body.result ?? "").slice(0, 30000), String(body.error ?? "").slice(0, 3000), Date.now(), body.task_id).run();
         if (!updated.meta.changes) return json({ error: "PC task not found or no longer running" }, 404);
+        await notifyPhone(env, body.status, "pc");
         return json({ ok: true });
       }
       return json({ error: "Not found" }, 404);
