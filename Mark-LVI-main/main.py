@@ -2291,6 +2291,15 @@ class JarvisLive:
             return
         while True:
             try:
+                if not self._cloud_pairing_ready:
+                    try:
+                        _pairing = await bridge.create_pairing()
+                        self.ui.write_log(f"SYS: Cloud phone pairing code: {_pairing.get('pin', 'Unavailable')} (valid for 10 minutes).")
+                        self._cloud_pairing_ready = True
+                    except Exception as _pair_err:
+                        print(f"[CloudBridge] Pairing service unavailable: {_pair_err}")
+                        await asyncio.sleep(15)
+                        continue
                 if self._cloud_bridge_task_id is not None or not self.session:
                     await asyncio.sleep(2)
                     continue
@@ -2472,6 +2481,7 @@ class JarvisLive:
 
         self._cloud_bridge = None
         self._cloud_bridge_task_id = None
+        self._cloud_pairing_ready = False
         try:
             _cloud_cfg_path = BASE_DIR / "config" / "api_keys.json"
             if _cloud_cfg_path.exists():
@@ -2480,10 +2490,8 @@ class JarvisLive:
                 _cloud_token = str(_cloud_cfg.get("cloud_bridge_token", "")).strip()
                 if _cloud_url and _cloud_token:
                     self._cloud_bridge = CloudBridge(_cloud_url, _cloud_token)
-                    _pairing = await self._cloud_bridge.create_pairing()
-                    self.ui.write_log(f"SYS: Cloud phone pairing code: {_pairing.get('pin', 'Unavailable')} (valid for 10 minutes).")
                     asyncio.create_task(self._process_cloud_bridge_tasks())
-                    self.ui.write_log("SYS: Cloud bridge configured.")
+                    self.ui.write_log("SYS: Cloud bridge configured. Connecting…")
                 else:
                     print("[CloudBridge] Not configured. Add cloud_worker_url and cloud_bridge_token to config/api_keys.json.")
         except Exception as _cloud_err:
