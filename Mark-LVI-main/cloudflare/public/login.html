@@ -159,7 +159,7 @@
     inp.focus();
 
     inp.addEventListener('input', () => {
-      inp.value = inp.value.toUpperCase().replace(/[^A-Z2-9]/g, '');
+      inp.value = inp.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '');
       if (inp.value.length === 8) doLogin();
     });
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
