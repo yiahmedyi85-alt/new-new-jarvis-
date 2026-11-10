@@ -83,6 +83,16 @@ curl -X POST https://YOUR-WORKER.workers.dev/api/test-gemini \\
 
 A successful response confirms that Cloudflare can reach Gemini using the configured secret. This test makes a small Gemini API request.
 
+## Cloud file sharing
+
+Create the R2 bucket once before deployment:
+
+```bash
+npx wrangler r2 bucket create jarvis-cloud-files
+```
+
+The phone dashboard supports authenticated uploads and downloads through this bucket. Each file is limited to 10 MB. R2 has a free monthly allowance, but usage beyond the current allowance can incur charges. Check Cloudflare's current R2 pricing before enabling it. The desktop bridge does not yet automatically sync these R2 files into the PC's local upload folder.
+
 ## Use the phone dashboard
 
 - Send a normal message to queue a PC task. The computer must be powered on and JARVIS must be running.
