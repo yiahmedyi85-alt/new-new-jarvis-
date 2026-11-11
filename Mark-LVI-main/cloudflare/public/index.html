@@ -217,11 +217,20 @@
             speakReply(task.result || 'Task completed.');
             if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
               try {
-                new Notification('JARVIS task completed', {
-                  body: String(task.result || 'Your task has finished.').slice(0, 180),
-                  tag: 'jarvis-task-' + task.id,
-                  icon: '/favicon.ico'
-                });
+                const registration = await navigator.serviceWorker?.ready;
+                if (registration?.showNotification) {
+                  await registration.showNotification('JARVIS task completed', {
+                    body: String(task.result || 'Your task has finished.').slice(0, 180),
+                    tag: 'jarvis-task-' + task.id,
+                    icon: '/jarvis-icon.svg',
+                    data: { url: '/' }
+                  });
+                } else {
+                  new Notification('JARVIS task completed', {
+                    body: String(task.result || 'Your task has finished.').slice(0, 180),
+                    tag: 'jarvis-task-' + task.id
+                  });
+                }
               } catch (_) {}
             }
             toast('Task completed');
