@@ -11,8 +11,8 @@ bucket_name = "jarvis-cloud-files"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "jarvis-cloud-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_name = "jarvis-db"
+database_id = "31a4a09f-e185-4c33-9523-b250d7951848"
 
 [vars]
 GEMINI_MODEL = "gemini-3.5-flash-lite"
