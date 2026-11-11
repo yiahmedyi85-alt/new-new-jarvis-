@@ -276,7 +276,7 @@
     });
     const voiceBtn = document.getElementById('voice-btn');
     let voiceRepliesEnabled = false;
-    function toggleVoice() {
+    async function toggleVoice() {
       if (!('speechSynthesis' in window)) {
         sys('Spoken replies are not supported by this browser.');
         return;
