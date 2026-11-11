@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#07090f">
+  <link rel="manifest" href="/manifest.webmanifest">
   <title>JARVIS Dashboard</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -355,6 +357,15 @@
     sys('Connected to JARVIS Cloud. Use !cloud before a prompt for an online task. PC commands require your laptop bridge.');
     refreshTasks();
     setInterval(refreshTasks, 4000);
+  </script>
+<script>
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(error => {
+          console.warn('JARVIS service worker registration failed:', error);
+        });
+      });
+    }
   </script>
 </body>
 </html>
