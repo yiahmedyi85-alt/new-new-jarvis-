@@ -156,7 +156,7 @@
   </footer>
 
   <script>
-    const _authToken = sessionStorage.getItem('jarvis_token');
+    const _authToken = localStorage.getItem('jarvis_token') || sessionStorage.getItem('jarvis_token');
     if (!_authToken) location.replace('/login');
     function _authFetch(url, opts = {}) {
       opts.headers = Object.assign({}, opts.headers, { Authorization: `Bearer ${_authToken}` });
