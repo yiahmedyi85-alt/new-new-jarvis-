@@ -177,6 +177,8 @@
         shake(); return;
       }
       if (data.ok && data.token) {
+        localStorage.setItem('jarvis_key', key);
+        localStorage.setItem('jarvis_token', data.token);
         sessionStorage.setItem('jarvis_key', key);
         sessionStorage.setItem('jarvis_token', data.token);
         location.href = '/';
