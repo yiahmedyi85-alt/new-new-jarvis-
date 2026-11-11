@@ -213,6 +213,15 @@
             _seen.add(task.id + ':done');
             append('jarvis', task.result || 'Task completed.');
             speakReply(task.result || 'Task completed.');
+            if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+              try {
+                new Notification('JARVIS task completed', {
+                  body: String(task.result || 'Your task has finished.').slice(0, 180),
+                  tag: 'jarvis-task-' + task.id,
+                  icon: '/favicon.ico'
+                });
+              } catch (_) {}
+            }
             toast('Task completed');
           } else if (task.status === 'failed' && !_seen.has(task.id + ':failed')) {
             _seen.add(task.id + ':failed');
@@ -273,6 +282,9 @@
         return;
       }
       voiceRepliesEnabled = !voiceRepliesEnabled;
+      if (voiceRepliesEnabled && 'Notification' in window && Notification.permission === 'default') {
+        try { await Notification.requestPermission(); } catch (_) {}
+      }
       voiceBtn.textContent = voiceRepliesEnabled ? '🔈' : '🔊';
       voiceBtn.setAttribute('aria-pressed', String(voiceRepliesEnabled));
       toast(voiceRepliesEnabled ? 'JARVIS voice replies enabled' : 'JARVIS voice replies muted');
